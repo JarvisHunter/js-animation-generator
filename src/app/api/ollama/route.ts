@@ -55,7 +55,7 @@ export async function POST(request: any) {
 
     // Set up Ollama streaming
     const response = await ollama.chat({
-      model: 'qwen2.5-coder:7b',
+      model: process.env.MODEL_NAME as string,
       messages: [{ role: 'user', content: prompt }], // Correct prompt usage
       stream: true,
     });
