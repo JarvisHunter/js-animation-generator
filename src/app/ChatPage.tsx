@@ -176,58 +176,70 @@ export default function ChatPage() {
         <h1 className={styles.title}>JavaScript Animation Generator</h1>
         <form className={styles.form} onSubmit={handleSubmit}>
         <QuestionField
-        label="General Instructions:"
-        name="general_instruction"
-        value={formData.general_instruction || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="Which HTML elements will be animated?"
-        name="elements"
-        value={formData.elements || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="What specific animations would you like to apply to the elements?"
-        name="animation_details"
-        value={formData.animation_details || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="What is the duration of the animation, and which easing function would you like to use?"
-        name="timing_easing"
-        value={formData.timing_easing || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="How should the animation be triggered?"
-        name="triggering"
-        value={formData.triggering || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="Are there any specific HTML structure or CSS selectors to target for this animation? (optional)"
-        name="html_structure"
-        value={formData.html_structure || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="Should the animation adapt based on different screen sizes or devices? (optional)"
-        name="responsive_behavior"
-        value={formData.responsive_behavior || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="Should the animations occur sequentially or simultaneously? (optional)"
-        name="animation_sequence"
-        value={formData.animation_sequence || ""}
-        onChange={handleChange}
-      />
-      <QuestionField
-        label="Should the animation repeat or loop, and if so, how many times or under what condition? (optional)"
-        name="repeat_behavior"
-        value={formData.repeat_behavior || ""}
-        onChange={handleChange}
+          label="General Instructions:"
+          name="general_instruction"
+          value={formData.general_instruction || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="Which HTML elements will be animated?"
+          name="elements"
+          value={formData.elements || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="What specific animations would you like to apply to the elements?"
+          name="animation_details"
+          value={formData.animation_details || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="What is the duration of the animation, and which easing function would you like to use?"
+          name="timing_easing"
+          value={formData.timing_easing || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="How should the animation be triggered?"
+          name="triggering"
+          value={formData.triggering || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="If you have an existing code for the animation, please include it here: (optional)"
+          name="current_code"
+          value={formData.current_code || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="What is the problem with the current code? (optional)"
+          name="current_problem"
+          value={formData.current_problem || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="Are there any specific HTML structure or CSS selectors to target for this animation? (optional)"
+          name="html_structure"
+          value={formData.html_structure || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="Should the animation adapt based on different screen sizes or devices? (optional)"
+          name="responsive_behavior"
+          value={formData.responsive_behavior || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="Should the animations occur sequentially or simultaneously? (optional)"
+          name="animation_sequence"
+          value={formData.animation_sequence || ""}
+          onChange={handleChange}
+        />
+        <QuestionField
+          label="Should the animation repeat or loop, and if so, how many times or under what condition? (optional)"
+          name="repeat_behavior"
+          value={formData.repeat_behavior || ""}
+          onChange={handleChange}
         />
         <QuestionField
           label="Do you want to add any extra effects or callbacks to your animation? (optional)"
@@ -265,7 +277,8 @@ export default function ChatPage() {
           value={formData.style_constraints || ""}
           onChange={handleChange}
         />
-        <button type="submit" className={styles.button} disabled={loading}>
+        {/* <button type="submit" className={styles.button} disabled={loading}> */}
+        <button type="submit" className={styles.button}>
           {loading ? "Generating..." : "Generate Animation"}
         </button>
         </form>
@@ -290,7 +303,7 @@ export default function ChatPage() {
           loading ? <div style={{ width: "100%", height: "100%", border: "1px solid #ccc", backgroundColor: "#fff" }}>{response}</div> :
           <iframe
             srcDoc={extractHtml(response)}
-            style={{ width: "100%", height: "100%", border: "1px solid #ccc", backgroundColor: "#fff" }}
+            style={{ width: "100%", height: "100%", border: "1px solid #ccc", backgroundColor: "#fff", overflowY: "scroll"}}
             title="Generated Animation"
           ></iframe>
         }

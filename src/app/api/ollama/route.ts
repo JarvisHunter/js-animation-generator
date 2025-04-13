@@ -5,16 +5,18 @@ import { AnimationData } from '../../types';
 
 function buildPrompt(data: AnimationData): string {
   // Start with the required fields
-  let prompt = `You are an expert anime.js developer. Generate a complete, optimized JavaScript code snippet using anime.js that meets the following animation requirements:
-      General Instruction: ${data.general_instruction}
-      Elements: ${data.elements}
-      Animation Details: ${data.animation_details}
-      Timing & Easing: ${data.timing_easing}
-      Triggering: ${data.triggering}
+  let prompt = `As a website developer who can write code visualize animations, Generate a complete and optimized HTML code that meets the following animation requirements:
+      The general instruction is: ${data.general_instruction}.
+      The specific details about the elements are: ${data.elements}
+      The specific details about the animations are: ${data.animation_details}
+      The duration the animation, and the easing of the animation is: ${data.timing_easing}
+      The animation should be triggered as follow: ${data.triggering}.
       `;
 
     // Define optional fields
     const optionalFields: [string, keyof AnimationData][] = [
+      ["current HTML or Javascript code that is related to the required animation", "current_code"],
+      ["The problem with the current code", "current_problem"],
       ["HTML Structure/Selectors", "html_structure"],
       ["Responsive Behavior", "responsive_behavior"],
       ["Sequential/Simultaneous Animation", "animation_sequence"],
@@ -58,6 +60,9 @@ export async function POST(request: any) {
       model: process.env.MODEL_NAME as string,
       messages: [{ role: 'user', content: prompt }], // Correct prompt usage
       stream: true,
+      options: {
+        num_ctx: 8192,
+      }
     });
 
     const encoder = new TextEncoder();
