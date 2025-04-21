@@ -42,6 +42,15 @@ const extractHtml = (text: any) => {
     return text;
 };
 
+interface TechConstraints {
+  framework: 'vanilla' | 'react';
+  rendering: 'dom' | 'svg' | 'canvas';
+  physics: {
+    motionType: 'spring' | 'easing' | 'frame';
+    coordinateSystem: 'screen' | 'relative';
+  };
+}
+
 const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChange}) => (
   <label>
     {label}
@@ -55,12 +64,20 @@ const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChan
   </label>
 );
 
-
 export default function ChatPage() {
 
   const [formData, setFormData] = useState<AnimationData>({} as AnimationData);
+  const [techConstraints, setTechConstraints] = useState<TechConstraints>({
+    framework: 'vanilla',
+    rendering: 'dom',
+    physics: {
+      motionType: 'easing',
+      coordinateSystem: 'relative'
+    }
+  });
   const [response, setResponse] = useState(""); 
   const [loading, setLoading] = useState(false);
+  const [isImproving, setIsImproving] = useState(false); // Add new state
   const [copySuccess, setCopySuccess] = useState(false);
   const accumulatedContent = useRef(""); 
 
@@ -78,7 +95,8 @@ export default function ChatPage() {
       "elements",
       "animation_details",
       "timing_easing",
-      "triggering"
+      "triggering", 
+      "repeat_behavior"
     ];
   
     // Check if any compulsory field is missing
@@ -96,12 +114,17 @@ export default function ChatPage() {
     accumulatedContent.current = ""; // Reset ref storage
 
     try {
+      const payload = {
+        ...formData,
+        techConstraints
+      };
+
       const apiResponse = await fetch('/api/ollama', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!apiResponse.ok) {
@@ -157,6 +180,76 @@ export default function ChatPage() {
     }
   };
 
+  const handleAlternate = async (e: any) => {
+    e.preventDefault();
+
+    const compulsoryFields: (keyof AnimationData)[] = [
+      "general_instruction",
+      "elements",
+      "animation_details",
+      "timing_easing",
+      "triggering", 
+      "repeat_behavior"
+    ];
+  
+    // Check if any compulsory field is missing
+    for (const field of compulsoryFields) {
+      if (!formData[field]) {
+        alert(`Please fill in the ${field.replace('_', ' ')} field.`);
+        return;
+      }
+    }
+
+    setIsImproving(true);
+    try {
+      const payload = {
+        prompt: formData.general_instruction,
+        task: "improve_prompt"
+      };
+
+      const apiResponse = await fetch('/api/ollama', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!apiResponse.ok) {
+        throw new Error('API request failed');
+      }
+      const reader = apiResponse.body?.getReader();
+      const decoder = new TextDecoder();
+      let improvedPrompt = '';
+
+      while (true) {
+        const { value, done } = await reader?.read() || {};
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const jsonChunks = text.split("\n\n").filter(Boolean);
+
+        for (const jsonChunk of jsonChunks) {
+          if (jsonChunk.startsWith("data:")) {
+            const data = JSON.parse(jsonChunk.substring(5));
+            if (data.chunk) {
+              improvedPrompt += data.chunk;
+              setFormData(prev => ({
+                ...prev,
+                general_instruction: improvedPrompt
+              }));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error improving prompt:', error);
+      alert('Error improving prompt. Please try again.');
+    } finally {
+      setIsImproving(false);
+    }
+  };
+
    const handleCopyCode = () => {
     const htmlCode = response;
     navigator.clipboard.writeText(htmlCode)
@@ -181,6 +274,63 @@ export default function ChatPage() {
         value={formData.general_instruction || ""}
         onChange={handleChange}
       />
+      <fieldset className={styles.techSection}>
+            <legend>Technical Settings</legend>
+            
+            <div className={styles.optionGroup}>
+              <label>
+                <span>Framework:</span>
+                <select
+                  value={techConstraints.framework}
+                  onChange={e => setTechConstraints(p => ({
+                    ...p,
+                    framework: e.target.value as 'vanilla' | 'react'
+                  }))}
+                >
+                  <option value="vanilla">Plain JavaScript</option>
+                  <option value="react">React</option>
+                </select>
+              </label>
+            </div>
+
+            <div className={styles.optionGroup}>
+              <label>
+                <span>Rendering:</span>
+                <select
+                  value={techConstraints.rendering}
+                  onChange={e => setTechConstraints(p => ({
+                    ...p,
+                    rendering: e.target.value as 'dom' | 'svg' | 'canvas'
+                  }))}
+                >
+                  <option value="dom">DOM Elements</option>
+                  <option value="svg">SVG</option>
+                  <option value="canvas">Canvas</option>
+                </select>
+              </label>
+            </div>
+
+            <div className={styles.optionGroup}>
+              <label>
+                <span>Animation Type:</span>
+                <select
+                  value={techConstraints.physics.motionType}
+                  onChange={e => setTechConstraints(p => ({
+                    ...p,
+                    physics: {
+                      ...p.physics,
+                      motionType: e.target.value as 'spring' | 'easing' | 'frame'
+                    }
+                  }))}
+                >
+                  <option value="easing">Smooth Transition</option>
+                  <option value="spring">Bouncy Effect</option>
+                  <option value="frame">Frame-by-Frame</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
       <QuestionField
         label="Which HTML elements will be animated?"
         name="elements"
@@ -200,11 +350,17 @@ export default function ChatPage() {
         onChange={handleChange}
       />
       <QuestionField
-        label="How should the animation be triggered?"
+        label="How should the animation be triggered? (e.g trigger-btn, onload)"
         name="triggering"
         value={formData.triggering || ""}
         onChange={handleChange}
       />
+      <QuestionField
+        label="Should the animation repeat or loop, and if so, how many times or under what condition? (e.g Trigger button, Do not repeat, Infinite, 3 times)"
+        name="repeat_behavior"
+        value={formData.repeat_behavior || ""}
+        onChange={handleChange}
+        />
       <QuestionField
         label="Are there any specific HTML structure or CSS selectors to target for this animation? (optional)"
         name="html_structure"
@@ -223,12 +379,6 @@ export default function ChatPage() {
         value={formData.animation_sequence || ""}
         onChange={handleChange}
       />
-      <QuestionField
-        label="Should the animation repeat or loop, and if so, how many times or under what condition? (optional)"
-        name="repeat_behavior"
-        value={formData.repeat_behavior || ""}
-        onChange={handleChange}
-        />
         <QuestionField
           label="Do you want to add any extra effects or callbacks to your animation? (optional)"
           name="additional_effects"
@@ -265,8 +415,11 @@ export default function ChatPage() {
           value={formData.style_constraints || ""}
           onChange={handleChange}
         />
-        <button type="submit" className={styles.button} disabled={loading}>
+        <button type="submit" className={styles.button} disabled={isImproving || loading}>
           {loading ? "Generating..." : "Generate Animation"}
+        </button>
+        <button onClick={handleAlternate} className={styles.secondaryButton} disabled={isImproving || loading}>
+          {isImproving ? "Improving..." : "Improve Prompt"}
         </button>
         </form>
       </div>

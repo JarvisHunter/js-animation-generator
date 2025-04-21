@@ -3,9 +3,39 @@ import { NextResponse } from 'next/server';
 import { AnimationData } from '../../types';
 
 
-function buildPrompt(data: AnimationData): string {
+function buildAnimationPrompt(data: AnimationData): string {
   // Start with the required fields
-  let prompt = `You are an expert anime.js developer. Generate a complete, optimized JavaScript code snippet using anime.js that meets the following animation requirements:
+  const frameworkRules = data.techConstraints.framework === 'react' ? `
+  - Use React functional components with hooks
+  - All DOM access must be in useEffect/useLayoutEffect
+  - Use useRef for element references
+  - No class components
+  - Add error boundaries` : `
+  - Use vanilla JavaScript
+  - No external dependencies`;
+
+  const renderingRules = {
+    dom: '- Use CSS transforms for smooth animations',
+    svg: '- Calculate viewBox dynamically\n- Use stroke-dasharray for line animations',
+    canvas: '- Request animation frame\n- Double buffering\n- Cleanup resources'
+  }[data.techConstraints.rendering];
+
+  const physicsRules = {
+    spring: `- Implement spring physics with tension ${data.techConstraints.physics.coordinateSystem === 'relative' ? 150 : 100}`,
+    easing: `- Use ${data.techConstraints.physics.motionType === 'easing' ? 'cubic-bezier(0.4, 0, 0.2, 1)' : 'linear'} timing`,
+    frame: '- Implement requestAnimationFrame loop'
+  }[data.techConstraints.physics.motionType];
+
+  let prompt = `You are an expert javascript animation developer. Generate a complete, optimized JavaScript code snippet that meets the following animation requirements:
+      Technical Constraints:
+      Framework: ${data.techConstraints.framework.toUpperCase()}
+      ${frameworkRules}
+      Rendering: ${data.techConstraints.rendering.toUpperCase()}
+      ${renderingRules}
+      Physics:
+      ${physicsRules}
+      Coordinate System: ${data.techConstraints.physics.coordinateSystem}
+
       General Instruction: ${data.general_instruction}
       Elements: ${data.elements}
       Animation Details: ${data.animation_details}
@@ -43,49 +73,32 @@ function buildPrompt(data: AnimationData): string {
   return prompt;
 }
 
+function buildImprovementPrompt(userPrompt: string): string {
+  return `You are an expert prompt engineer for javascript animation development. Improve this prompt for better results:
+  
+  Original Prompt: "${userPrompt}"
+
+  Guidelines for Improvement:
+  1. Make it more specific about desired visual outcomes
+  2. Add technical details about timing and transitions
+  3. Clarify element relationships
+  4. Specify performance requirements
+  5. Maintain the original intent
+
+  Improved Prompt (just return the improved text, no formatting):`;
+}
+
 
 
 export async function POST(request: any) {
   try {
     // Parse the request body
-    const formData = await request.json();
+    const requestData = await request.json();
 
-    // Create prompt
-    const prompt = buildPrompt(formData);
-
-    // Set up Ollama streaming
-    const response = await ollama.chat({
-      model: process.env.MODEL_NAME as string,
-      messages: [{ role: 'user', content: prompt }], // Correct prompt usage
-      stream: true,
-    });
-
-    const encoder = new TextEncoder();
-    let fullContent = '';
-
-    // Create streaming iterator
-    async function* makeIterator() {
-      for await (const part of response) {
-        const chunk = part.message.content;
-        fullContent += chunk;
-        console.log('Chunk:', chunk);
-
-        // Yield properly formatted JSON with newline delimiters
-        yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
-      }
-
-      // Signal completion and send full content
-      yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent })}\n\n`);
-    }
-
-    // Return streaming response
-    return new Response(iteratorToStream(makeIterator()), {
-      headers: {
-        'Content-Type': 'text/event-stream', 
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    if (requestData.task === 'improve_prompt') {
+      return handlePromptImprovement(requestData);
+    } 
+    return handleAnimationGeneration(requestData);
 
   } catch (error) {
     console.error('Error calling Ollama API:', error);
@@ -94,6 +107,92 @@ export async function POST(request: any) {
       { status: 500 }
     );
   }
+}
+
+// Function to handle prompt improvement
+async function handlePromptImprovement(requestData: any) {
+  if (!requestData.prompt) {
+    return NextResponse.json(
+      { success: false, error: 'Missing prompt for improvement' },
+      { status: 400 }
+    );
+  }
+
+  const improvementPrompt = buildImprovementPrompt(requestData.prompt);
+  
+  const response = await ollama.chat({
+    model: process.env.MODEL_NAME as string,
+    messages: [{ role: 'user', content: improvementPrompt }],
+    stream: true,
+  });
+
+  const encoder = new TextEncoder();
+  let improvedContent = '';
+
+  async function* makeIterator() {
+    for await (const part of response) {
+      const chunk = part.message.content;
+      improvedContent += chunk;
+      yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
+    }
+    yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: improvedContent })}\n\n`);
+  }
+
+  return new Response(iteratorToStream(makeIterator()), {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+
+// Function to handle Animation Generation 
+async function handleAnimationGeneration(formData: AnimationData) {
+  const prompt = buildAnimationPrompt(formData);
+  const options = {
+    temperature: 0.5,
+    top_p: 0.9,
+    max_tokens: 2000,
+    stream: true,
+  };
+
+  // Create prompt
+
+  // Set up Ollama streaming
+  const response = await ollama.chat({
+    model: process.env.MODEL_NAME as string,
+    messages: [{ role: 'user', content: prompt , }], // Correct prompt usage
+    options: options, // Check if this might cause error (positional)
+    stream: true,
+  });
+
+  const encoder = new TextEncoder();
+  let fullContent = '';
+
+  // Create streaming iterator
+  async function* makeIterator() {
+    for await (const part of response) {
+      const chunk = part.message.content;
+      fullContent += chunk;
+      console.log('Chunk:', chunk);
+
+      // Yield properly formatted JSON with newline delimiters
+      yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
+    }
+
+    // Signal completion and send full content
+    yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent })}\n\n`);
+  }
+
+  // Return streaming response
+  return new Response(iteratorToStream(makeIterator()), {
+    headers: {
+      'Content-Type': 'text/event-stream', 
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
 
 // Helper function to convert iterator to stream
