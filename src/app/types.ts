@@ -23,3 +23,15 @@ export interface AnimationData {
     };
   };
 }
+
+export interface ImprovementRequest {
+  task: 'improve_prompt';
+  currentData: {
+    general_instruction: string;
+    elements: string;
+    animation_details: string;
+    timing_easing: string;
+    triggering: string;
+    repeat_behavior: string;
+  };
+}

@@ -203,8 +203,15 @@ export default function ChatPage() {
     setIsImproving(true);
     try {
       const payload = {
-        prompt: formData.general_instruction,
-        task: "improve_prompt"
+        task: "improve_prompt",
+        currentData: {
+          general_instruction: formData.general_instruction,
+          elements: formData.elements,
+          animation_details: formData.animation_details,
+          timing_easing: formData.timing_easing,
+          triggering: formData.triggering,
+          repeat_behavior: formData.repeat_behavior
+        }
       };
 
       const apiResponse = await fetch('/api/ollama', {
@@ -218,30 +225,46 @@ export default function ChatPage() {
       if (!apiResponse.ok) {
         throw new Error('API request failed');
       }
+
       const reader = apiResponse.body?.getReader();
       const decoder = new TextDecoder();
-      let improvedPrompt = '';
+      let jsonString = '';
 
       while (true) {
         const { value, done } = await reader?.read() || {};
         if (done) break;
 
         const text = decoder.decode(value);
-        const jsonChunks = text.split("\n\n").filter(Boolean);
+        const chunks = text.split("\n\n").filter(Boolean);
 
-        for (const jsonChunk of jsonChunks) {
-          if (jsonChunk.startsWith("data:")) {
-            const data = JSON.parse(jsonChunk.substring(5));
-            if (data.chunk) {
-              improvedPrompt += data.chunk;
+        for (const chunk of chunks) {
+          if (!chunk.startsWith("data:")) continue;
+          
+          const data = JSON.parse(chunk.substring(5));
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          if (data.chunk) {
+            jsonString += data.chunk;
+          }
+
+          if (data.done) {
+            try {
+              const improvedData = JSON.parse(jsonString);
               setFormData(prev => ({
                 ...prev,
-                general_instruction: improvedPrompt
+                ...improvedData
               }));
+            } catch (error) {
+              console.error('JSON parse error:', error, 'Raw:', jsonString);
+              throw new Error('Failed to parse improved data');
             }
           }
         }
       }
+
     } catch (error) {
       console.error('Error improving prompt:', error);
       alert('Error improving prompt. Please try again.');

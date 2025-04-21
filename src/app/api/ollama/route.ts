@@ -1,6 +1,6 @@
 import ollama from 'ollama';
 import { NextResponse } from 'next/server';
-import { AnimationData } from '../../types';
+import { AnimationData, ImprovementRequest } from '../../types';
 
 
 function buildAnimationPrompt(data: AnimationData): string {
@@ -73,19 +73,37 @@ function buildAnimationPrompt(data: AnimationData): string {
   return prompt;
 }
 
-function buildImprovementPrompt(userPrompt: string): string {
-  return `You are an expert prompt engineer for javascript animation development. Improve this prompt for better results:
+function buildImprovementPrompt(currentData: ImprovementRequest['currentData']): string {
+  return `You are an expert javascript animation prompt engineer. Improve these specifications:
   
-  Original Prompt: "${userPrompt}"
+  Current Specifications:
+  ${JSON.stringify(currentData, null, 2)}
 
   Guidelines for Improvement:
-  1. Make it more specific about desired visual outcomes
-  2. Add technical details about timing and transitions
-  3. Clarify element relationships
-  4. Specify performance requirements
-  5. Maintain the original intent
+  1. Make it more specific about desired VISUAL outcomes (for the general_instruction)
+  2. Clarify element relationships
+  3. Specify performance requirements
+  4. Maintain the original intent
 
-  Improved Prompt (just return the improved text, no formatting):`;
+  IMPORTANT: Return VALID JSON ONLY. Follow these rules:
+  1. Maintain original field names exactly
+  2. All response fields must be STRING VALUES ONLY. Never return objects or nested values.
+  3. Keep JSON structure intact
+  4. Escape special characters
+  5. Return complete JSON in one response
+  6. Never return markdown formatting
+
+  Example valid response:
+  {
+    "general_instruction": "Create smooth transition...",
+    "elements": "Main container div...",
+    "animation_details": "Fade-in effect...",
+    "timing_easing": "300ms cubic-bezier(...)",
+    "triggering": "On scroll event",
+    "repeat_behavior": "Infinite loop"
+  }
+
+  Improved specifications:`;
 }
 
 
@@ -110,15 +128,8 @@ export async function POST(request: any) {
 }
 
 // Function to handle prompt improvement
-async function handlePromptImprovement(requestData: any) {
-  if (!requestData.prompt) {
-    return NextResponse.json(
-      { success: false, error: 'Missing prompt for improvement' },
-      { status: 400 }
-    );
-  }
-
-  const improvementPrompt = buildImprovementPrompt(requestData.prompt);
+async function handlePromptImprovement(requestData: ImprovementRequest) {
+  const improvementPrompt = buildImprovementPrompt(requestData.currentData);
   
   const response = await ollama.chat({
     model: process.env.MODEL_NAME as string,
@@ -127,15 +138,24 @@ async function handlePromptImprovement(requestData: any) {
   });
 
   const encoder = new TextEncoder();
-  let improvedContent = '';
+  let jsonBuffer = '';
 
   async function* makeIterator() {
     for await (const part of response) {
       const chunk = part.message.content;
-      improvedContent += chunk;
+      jsonBuffer += chunk;
+      
+      // Stream partial updates
       yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
     }
-    yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: improvedContent })}\n\n`);
+
+    // Validate final JSON
+    try {
+      JSON.parse(jsonBuffer);
+      yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: jsonBuffer })}\n\n`);
+    } catch (error) {
+      yield encoder.encode(`data: ${JSON.stringify({ error: "Invalid JSON format" })}\n\n`);
+    }
   }
 
   return new Response(iteratorToStream(makeIterator()), {
