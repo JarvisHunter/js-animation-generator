@@ -74,18 +74,44 @@ function buildAnimationPrompt(data: AnimationData): string {
 }
 
 function buildImprovementPrompt(userPrompt: string): string {
-  return `You are an expert prompt engineer for javascript animation development. Improve this prompt for better results:
+  return `You are an expert prompt engineer for javascript animation development and also an expert in perceptual animation design. Improve this prompt for better results:
   
   Original Prompt: "${userPrompt}"
 
   Guidelines for Improvement:
-  1. Make it more specific about desired visual outcomes
-  2. Add technical details about timing and transitions
-  3. Clarify element relationships
-  4. Specify performance requirements
-  5. Maintain the original intent
+  1. You MUST put extra attention and identify the type of animation, and the distinctive features/characteristics associated with the "movement" by these questions and then add the details in the improved prompt:
+    - Is it a movement of a physical object (or something abstract like a graph)? 
+      - If it is a physical object, note the "movement" distinctive features/characteristics (based on PHYSICS), for example: "bouncing" is different from "moving", "floating" is slower than "moving", "bouncing ball" acts different from "bouncing stick"
+      - If it is not a physical object, what rules does the "movement" follow?
+    - Is it a movement of a single object or multiple objects?
+  2. You MUST identify the specific elements involved in the animation and their relationships, including:
+    - The starting and ending positions of the elements
+  3. You MUST figure out the very specific desired visual outcomes needed for the animation and element combination and include the detailed description in the improved prompt.
+  4. You MUST figure out which specific clear visual cues that highlights the animation in accordance with the original intent and include the details in the improved prompt. 
+  5. You MUST clarify element relationships
+  6. You should specify performance requirements
+  7. You MUST keep the original intent
+  
+  Follow the guidelines to create/generate a more effective prompt but do not copy everything written in the guidelines. 
+  Improved prompt (just return the improved text, no formatting):`;
 
-  Improved Prompt (just return the improved text, no formatting):`;
+  //     - Is it a linear movement, or does it have acceleration/deceleration?
+  // - Does it involve rotation, scaling, or color changes?
+  // - Is it a 2D or 3D animation?
+  // - What is the speed of the animation?
+  // Additionally, you MUST determine whether the original prompt and intent needs any of the following improvements:
+  //   - Motion blur through strategic opacity animation (only if it fits the context of the animation)
+  //   - Chromatic aberration effect during fast movement (only if it fits the context of the animation)
+  //   - Add perceptual compensation (anticipatory lead frames) (only if it fits the context of the animation)
+  //   - Add motion trails/particle effects proportional to speed (only if it fits the context of the animation)
+  //   - Create shadow that reacts to vertical position (only if it fits the context of the animation)
+  //   - Implement smoothstep easing as default baseline (only if it fits the context of the animation)
+  //   - If element is solid-color, add (only if it fits the context of the animation): 
+  //     - Radial gradient for depth perception
+  //     - Dynamic highlight that moves with virtual light source
+  //     - Surface pattern that animates to show rotation
+  //     - Border gradient indicating motion direction
+  // Then include the only what you deem significant in the improved prompt. 
 }
 
 
