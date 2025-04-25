@@ -75,10 +75,10 @@ export default function ChatPage() {
 
     const compulsoryFields: (keyof AnimationData)[] = [
       "general_instruction",
-      "elements",
-      "animation_details",
-      "timing_easing",
-      "triggering"
+      // "elements",
+      // "animation_details",
+      // "timing_easing",
+      // "triggering"
     ];
   
     // Check if any compulsory field is missing
@@ -181,13 +181,13 @@ export default function ChatPage() {
           value={formData.general_instruction || ""}
           onChange={handleChange}
         />
-        <QuestionField
+       {/* <QuestionField
           label="Which HTML elements will be animated?"
           name="elements"
           value={formData.elements || ""}
           onChange={handleChange}
         />
-        <QuestionField
+         <QuestionField
           label="What specific animations would you like to apply to the elements?"
           name="animation_details"
           value={formData.animation_details || ""}
@@ -276,7 +276,7 @@ export default function ChatPage() {
           name="style_constraints"
           value={formData.style_constraints || ""}
           onChange={handleChange}
-        />
+        /> */}
         {/* <button type="submit" className={styles.button} disabled={loading}> */}
         <button type="submit" className={styles.button}>
           {loading ? "Generating..." : "Generate Animation"}
