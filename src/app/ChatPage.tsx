@@ -67,14 +67,14 @@ const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChan
 export default function ChatPage() {
 
   const [formData, setFormData] = useState<AnimationData>({} as AnimationData);
-  const [techConstraints, setTechConstraints] = useState<TechConstraints>({
-    framework: 'vanilla',
-    rendering: 'dom',
-    physics: {
-      motionType: 'easing',
-      coordinateSystem: 'relative'
-    }
-  });
+  // const [techConstraints, setTechConstraints] = useState<TechConstraints>({
+  //   framework: 'vanilla',
+  //   rendering: 'dom',
+  //   physics: {
+  //     motionType: 'easing',
+  //     coordinateSystem: 'relative'
+  //   }
+  // });
   const [response, setResponse] = useState(""); 
   const [loading, setLoading] = useState(false);
   const [isImproving, setIsImproving] = useState(false); // Add new state
@@ -87,7 +87,7 @@ export default function ChatPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: any, type: string) => {
     e.preventDefault();
 
     const compulsoryFields: (keyof AnimationData)[] = [
@@ -107,16 +107,18 @@ export default function ChatPage() {
     }
   
 
-    setLoading(true);
+    if (type == "improve_prompt") setIsImproving(true);
+    else setLoading(true);
     console.log("submitted");
     setResponse(""); // Reset UI
     accumulatedContent.current = ""; // Reset ref storage
 
     try {
       const payload = {
-        ...formData,
-        techConstraints
+        prompt: formData.general_instruction,
+        task: type, // "generate_animation" or "improve_prompt"
       };
+      console.log("payload: ", payload);
 
       const apiResponse = await fetch('/api/ollama', {
         method: 'POST',
@@ -162,8 +164,11 @@ export default function ChatPage() {
               }
 
               if (data.done) {
-                setResponse(accumulatedContent.current); // Final update
+                if (type == "generate_animation")
+                  setResponse(accumulatedContent.current); // Final update
+                else setFormData({ ...formData, general_instruction: accumulatedContent.current });
                 setLoading(false);
+                setIsImproving(false);
                 break;
               }
             }
@@ -176,76 +181,6 @@ export default function ChatPage() {
       console.error('Error:', error);
     } finally {
       
-    }
-  };
-
-  const handleAlternate = async (e: any) => {
-    e.preventDefault();
-
-    const compulsoryFields: (keyof AnimationData)[] = [
-      "general_instruction",
-      "elements",
-      "animation_details",
-      "timing_easing",
-      "triggering", 
-      "repeat_behavior"
-    ];
-  
-    // Check if any compulsory field is missing
-    for (const field of compulsoryFields) {
-      if (!formData[field]) {
-        alert(`Please fill in the ${field.replace('_', ' ')} field.`);
-        return;
-      }
-    }
-
-    setIsImproving(true);
-    try {
-      const payload = {
-        prompt: formData.general_instruction,
-        task: "improve_prompt"
-      };
-
-      const apiResponse = await fetch('/api/ollama', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!apiResponse.ok) {
-        throw new Error('API request failed');
-      }
-      const reader = apiResponse.body?.getReader();
-      const decoder = new TextDecoder();
-      let improvedPrompt = '';
-
-      while (true) {
-        const { value, done } = await reader?.read() || {};
-        if (done) break;
-
-        const text = decoder.decode(value);
-        const jsonChunks = text.split("\n\n").filter(Boolean);
-
-        for (const jsonChunk of jsonChunks) {
-          if (jsonChunk.startsWith("data:")) {
-            const data = JSON.parse(jsonChunk.substring(5));
-            if (data.chunk) {
-              improvedPrompt += data.chunk;
-              setFormData(prev => ({
-                ...prev,
-                general_instruction: improvedPrompt
-              }));
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error improving prompt:', error);
-      alert('Error improving prompt. Please try again.');
-    } finally {
-      setIsImproving(false);
     }
   };
 
@@ -266,122 +201,26 @@ export default function ChatPage() {
     <div className={styles.chat_container}>
       <div className={styles.leftPanel}>
         <h1 className={styles.title}>JavaScript Animation Generator</h1>
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form className={styles.form} onSubmit={(e) => handleSubmit(e, "generate_animation")}>
         <QuestionField
           label="General Instructions:"
           name="general_instruction"
           value={formData.general_instruction || ""}
           onChange={handleChange}
         />
-       {/* <QuestionField
-          label="Which HTML elements will be animated?"
-          name="elements"
-          value={formData.elements || ""}
-          onChange={handleChange}
-        />
-         <QuestionField
-          label="What specific animations would you like to apply to the elements?"
-          name="animation_details"
-          value={formData.animation_details || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="What is the duration of the animation, and which easing function would you like to use?"
-          name="timing_easing"
-          value={formData.timing_easing || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="How should the animation be triggered?"
-          name="triggering"
-          value={formData.triggering || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="If you have an existing code for the animation, please include it here: (optional)"
-          name="current_code"
-          value={formData.current_code || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="What is the problem with the current code? (optional)"
-          name="current_problem"
-          value={formData.current_problem || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Are there any specific HTML structure or CSS selectors to target for this animation? (optional)"
-          name="html_structure"
-          value={formData.html_structure || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Should the animation adapt based on different screen sizes or devices? (optional)"
-          name="responsive_behavior"
-          value={formData.responsive_behavior || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Should the animations occur sequentially or simultaneously? (optional)"
-          name="animation_sequence"
-          value={formData.animation_sequence || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Should the animation repeat or loop, and if so, how many times or under what condition? (optional)"
-          name="repeat_behavior"
-          value={formData.repeat_behavior || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Do you want to add any extra effects or callbacks to your animation? (optional)"
-          name="additional_effects"
-          value={formData.additional_effects || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Would you like any debugging or logging features for the animation? (optional)"
-          name="debugging_logging"
-          value={formData.debugging_logging || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Are there any fallback mechanisms needed for unsupported browsers or environments? (optional)"
-          name="fallbacks"
-          value={formData.fallbacks || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Should users be able to control the animation? (optional)"
-          name="user_controls"
-          value={formData.user_controls || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Does the animation involve transitioning between different states? (optional)"
-          name="transitions_states"
-          value={formData.transitions_states || ""}
-          onChange={handleChange}
-        />
-        <QuestionField
-          label="Are there any style limitations or constraints for the animation? (optional)"
-          name="style_constraints"
-          value={formData.style_constraints || ""}
-          onChange={handleChange}
-        />
         <button type="submit" className={styles.button} disabled={isImproving || loading}>
           {loading ? "Generating..." : "Generate Animation"}
         </button>
-        <button onClick={handleAlternate} className={styles.secondaryButton} disabled={isImproving || loading}>
+        <button onClick={(e) => handleSubmit(e, "improve_prompt")} className={styles.secondaryButton} disabled={isImproving || loading}>
           {isImproving ? "Improving..." : "Improve Prompt"}
         </button>
         </form>
       </div>
       <div className={styles.rightPanel}>
-      { loading ? 
-            <h2>Generating Animation...</h2> : 
+      { loading || isImproving ? 
+            <h2>Generating {isImproving ? "Prompt" : "Animation"}...</h2> : 
             <>
-              <h2>Generated Animation:</h2>
+              <h2>Generated result:</h2> 
               {response && !loading && (
                 <button 
                   onClick={handleCopyCode}

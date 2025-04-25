@@ -4,9 +4,9 @@ import { AnimationData } from '../../types';
 import fs from "fs/promises";
 
 
-function buildAnimationPrompt(data: AnimationData): string {
+function buildAnimationPrompt(initial_prompt: string): string {
   // Start with the required fields
-  let prompt = `Your task is to implement the following animation: ${data.general_instruction}.`;
+  let prompt = `Your task is to implement the following animation: ${initial_prompt}.`;
 
   return prompt;
 }
@@ -52,12 +52,11 @@ function buildImprovementPrompt(userPrompt: string): string {
   // Then include the only what you deem significant in the improved prompt. 
 }
 
-
-
 export async function POST(request: any) {
   try {
     // Parse the request body
     const requestData = await request.json();
+    console.log("requestData: ", requestData.prompt);
 
     if (requestData.task === 'improve_prompt') {
       return handlePromptImprovement(requestData);
@@ -97,6 +96,7 @@ async function handlePromptImprovement(requestData: any) {
     for await (const part of response) {
       const chunk = part.message.content;
       improvedContent += chunk;
+      console.log('Chunk:', chunk);
       yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
     }
     yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: improvedContent })}\n\n`);
@@ -112,12 +112,22 @@ async function handlePromptImprovement(requestData: any) {
 }
 
 // Function to handle Animation Generation 
-async function handleAnimationGeneration(formData: AnimationData) {
-  const prompt = buildAnimationPrompt(formData);
+async function handleAnimationGeneration(requestData: any) {
+  if (!requestData.prompt) {
+    return NextResponse.json(
+      { success: false, error: 'Missing prompt for improvement' },
+      { status: 400 }
+    );
+  }
+
+  const prompt = buildAnimationPrompt(requestData.prompt);
+  // console.log("input prompt: ", prompt);
+  
   const options = {
     temperature: 0.5,
     top_p: 0.9,
     max_tokens: 2000,
+    num_ctx: 8192,
     stream: true,
   };
 
@@ -155,8 +165,18 @@ async function handleAnimationGeneration(formData: AnimationData) {
     // Set up Ollama streaming
     const response = await ollama.chat({
       model: process.env.MODEL_NAME as string,
-      messages: [{ role: 'user', content: prompt }], // Correct prompt usage
+      messages: [
+        {
+            role: "system",
+            content: instructions,
+        },
+        {
+            role: "user",
+            content: prompt,
+        },
+      ],
       stream: true,
+      options: {...options},
     });
 
   const encoder = new TextEncoder();
