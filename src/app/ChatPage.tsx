@@ -42,6 +42,15 @@ const extractHtml = (text: any) => {
     return text;
 };
 
+interface TechConstraints {
+  framework: 'vanilla' | 'react';
+  rendering: 'dom' | 'svg' | 'canvas';
+  physics: {
+    motionType: 'spring' | 'easing' | 'frame';
+    coordinateSystem: 'screen' | 'relative';
+  };
+}
+
 const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChange}) => (
   <label>
     {label}
@@ -55,12 +64,20 @@ const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChan
   </label>
 );
 
-
 export default function ChatPage() {
 
   const [formData, setFormData] = useState<AnimationData>({} as AnimationData);
+  const [techConstraints, setTechConstraints] = useState<TechConstraints>({
+    framework: 'vanilla',
+    rendering: 'dom',
+    physics: {
+      motionType: 'easing',
+      coordinateSystem: 'relative'
+    }
+  });
   const [response, setResponse] = useState(""); 
   const [loading, setLoading] = useState(false);
+  const [isImproving, setIsImproving] = useState(false); // Add new state
   const [copySuccess, setCopySuccess] = useState(false);
   const accumulatedContent = useRef(""); 
 
@@ -96,12 +113,17 @@ export default function ChatPage() {
     accumulatedContent.current = ""; // Reset ref storage
 
     try {
+      const payload = {
+        ...formData,
+        techConstraints
+      };
+
       const apiResponse = await fetch('/api/ollama', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!apiResponse.ok) {
@@ -154,6 +176,76 @@ export default function ChatPage() {
       console.error('Error:', error);
     } finally {
       
+    }
+  };
+
+  const handleAlternate = async (e: any) => {
+    e.preventDefault();
+
+    const compulsoryFields: (keyof AnimationData)[] = [
+      "general_instruction",
+      "elements",
+      "animation_details",
+      "timing_easing",
+      "triggering", 
+      "repeat_behavior"
+    ];
+  
+    // Check if any compulsory field is missing
+    for (const field of compulsoryFields) {
+      if (!formData[field]) {
+        alert(`Please fill in the ${field.replace('_', ' ')} field.`);
+        return;
+      }
+    }
+
+    setIsImproving(true);
+    try {
+      const payload = {
+        prompt: formData.general_instruction,
+        task: "improve_prompt"
+      };
+
+      const apiResponse = await fetch('/api/ollama', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!apiResponse.ok) {
+        throw new Error('API request failed');
+      }
+      const reader = apiResponse.body?.getReader();
+      const decoder = new TextDecoder();
+      let improvedPrompt = '';
+
+      while (true) {
+        const { value, done } = await reader?.read() || {};
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const jsonChunks = text.split("\n\n").filter(Boolean);
+
+        for (const jsonChunk of jsonChunks) {
+          if (jsonChunk.startsWith("data:")) {
+            const data = JSON.parse(jsonChunk.substring(5));
+            if (data.chunk) {
+              improvedPrompt += data.chunk;
+              setFormData(prev => ({
+                ...prev,
+                general_instruction: improvedPrompt
+              }));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error improving prompt:', error);
+      alert('Error improving prompt. Please try again.');
+    } finally {
+      setIsImproving(false);
     }
   };
 
@@ -276,10 +368,12 @@ export default function ChatPage() {
           name="style_constraints"
           value={formData.style_constraints || ""}
           onChange={handleChange}
-        /> */}
-        {/* <button type="submit" className={styles.button} disabled={loading}> */}
-        <button type="submit" className={styles.button}>
+        />
+        <button type="submit" className={styles.button} disabled={isImproving || loading}>
           {loading ? "Generating..." : "Generate Animation"}
+        </button>
+        <button onClick={handleAlternate} className={styles.secondaryButton} disabled={isImproving || loading}>
+          {isImproving ? "Improving..." : "Improve Prompt"}
         </button>
         </form>
       </div>

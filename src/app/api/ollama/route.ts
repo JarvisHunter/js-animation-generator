@@ -4,11 +4,52 @@ import { AnimationData } from '../../types';
 import fs from "fs/promises";
 
 
-function buildPrompt(data: AnimationData): string {
+function buildAnimationPrompt(data: AnimationData): string {
   // Start with the required fields
   let prompt = `Your task is to implement the following animation: ${data.general_instruction}.`;
 
   return prompt;
+}
+
+function buildImprovementPrompt(userPrompt: string): string {
+  return `You are an expert prompt engineer for javascript animation development and also an expert in perceptual animation design. Improve this prompt for better results:
+  
+  Original Prompt: "${userPrompt}"
+
+  Guidelines for Improvement:
+  1. You MUST put extra attention and identify the type of animation, and the distinctive features/characteristics associated with the "movement" by these questions and then add the details in the improved prompt:
+    - Is it a movement of a physical object (or something abstract like a graph)? 
+      - If it is a physical object, note the "movement" distinctive features/characteristics (based on PHYSICS), for example: "bouncing" is different from "moving", "floating" is slower than "moving", "bouncing ball" acts different from "bouncing stick"
+      - If it is not a physical object, what rules does the "movement" follow?
+    - Is it a movement of a single object or multiple objects?
+  2. You MUST identify the specific elements involved in the animation and their relationships, including:
+    - The starting and ending positions of the elements
+  3. You MUST figure out the very specific desired visual outcomes needed for the animation and element combination and include the detailed description in the improved prompt.
+  4. You MUST figure out which specific clear visual cues that highlights the animation in accordance with the original intent and include the details in the improved prompt. 
+  5. You MUST clarify element relationships
+  6. You should specify performance requirements
+  7. You MUST keep the original intent
+  
+  Follow the guidelines to create/generate a more effective prompt but do not copy everything written in the guidelines. 
+  Improved prompt (just return the improved text, no formatting):`;
+
+  //     - Is it a linear movement, or does it have acceleration/deceleration?
+  // - Does it involve rotation, scaling, or color changes?
+  // - Is it a 2D or 3D animation?
+  // - What is the speed of the animation?
+  // Additionally, you MUST determine whether the original prompt and intent needs any of the following improvements:
+  //   - Motion blur through strategic opacity animation (only if it fits the context of the animation)
+  //   - Chromatic aberration effect during fast movement (only if it fits the context of the animation)
+  //   - Add perceptual compensation (anticipatory lead frames) (only if it fits the context of the animation)
+  //   - Add motion trails/particle effects proportional to speed (only if it fits the context of the animation)
+  //   - Create shadow that reacts to vertical position (only if it fits the context of the animation)
+  //   - Implement smoothstep easing as default baseline (only if it fits the context of the animation)
+  //   - If element is solid-color, add (only if it fits the context of the animation): 
+  //     - Radial gradient for depth perception
+  //     - Dynamic highlight that moves with virtual light source
+  //     - Surface pattern that animates to show rotation
+  //     - Border gradient indicating motion direction
+  // Then include the only what you deem significant in the improved prompt. 
 }
 
 
@@ -16,7 +57,69 @@ function buildPrompt(data: AnimationData): string {
 export async function POST(request: any) {
   try {
     // Parse the request body
-    const formData = await request.json();
+    const requestData = await request.json();
+
+    if (requestData.task === 'improve_prompt') {
+      return handlePromptImprovement(requestData);
+    } 
+    return handleAnimationGeneration(requestData);
+
+  } catch (error) {
+    console.error('Error calling Ollama API:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to generate animation: ' + (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+// Function to handle prompt improvement
+async function handlePromptImprovement(requestData: any) {
+  if (!requestData.prompt) {
+    return NextResponse.json(
+      { success: false, error: 'Missing prompt for improvement' },
+      { status: 400 }
+    );
+  }
+
+  const improvementPrompt = buildImprovementPrompt(requestData.prompt);
+  
+  const response = await ollama.chat({
+    model: process.env.MODEL_NAME as string,
+    messages: [{ role: 'user', content: improvementPrompt }],
+    stream: true,
+  });
+
+  const encoder = new TextEncoder();
+  let improvedContent = '';
+
+  async function* makeIterator() {
+    for await (const part of response) {
+      const chunk = part.message.content;
+      improvedContent += chunk;
+      yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
+    }
+    yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: improvedContent })}\n\n`);
+  }
+
+  return new Response(iteratorToStream(makeIterator()), {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+
+// Function to handle Animation Generation 
+async function handleAnimationGeneration(formData: AnimationData) {
+  const prompt = buildAnimationPrompt(formData);
+  const options = {
+    temperature: 0.5,
+    top_p: 0.9,
+    max_tokens: 2000,
+    stream: true,
+  };
 
     // const instructions = await fs.readFile("instructions_prompt.txt", "utf-8");
     const instructions = `
@@ -47,62 +150,41 @@ export async function POST(request: any) {
 
       Please present the code in a simple HTML file so that it can be easily run in a browser.
     `
-    // Create prompt
-    const prompt = buildPrompt(formData);
+  // Create prompt
 
     // Set up Ollama streaming
     const response = await ollama.chat({
       model: process.env.MODEL_NAME as string,
-      messages: [
-        {
-            role: "system",
-            content: instructions,
-        },
-        {
-            role: "user",
-            content: prompt,
-        },
-      ],
+      messages: [{ role: 'user', content: prompt }], // Correct prompt usage
       stream: true,
-      options: {
-        num_ctx: 8192,
-      }
     });
 
-    const encoder = new TextEncoder();
-    let fullContent = '';
+  const encoder = new TextEncoder();
+  let fullContent = '';
 
-    // Create streaming iterator
-    async function* makeIterator() {
-      for await (const part of response) {
-        const chunk = part.message.content;
-        fullContent += chunk;
-        console.log('Chunk:', chunk);
+  // Create streaming iterator
+  async function* makeIterator() {
+    for await (const part of response) {
+      const chunk = part.message.content;
+      fullContent += chunk;
+      console.log('Chunk:', chunk);
 
-        // Yield properly formatted JSON with newline delimiters
-        yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
-      }
-
-      // Signal completion and send full content
-      yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent })}\n\n`);
+      // Yield properly formatted JSON with newline delimiters
+      yield encoder.encode(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
     }
 
-    // Return streaming response
-    return new Response(iteratorToStream(makeIterator()), {
-      headers: {
-        'Content-Type': 'text/event-stream', 
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
-
-  } catch (error) {
-    console.error('Error calling Ollama API:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to generate animation: ' + (error as Error).message },
-      { status: 500 }
-    );
+    // Signal completion and send full content
+    yield encoder.encode(`data: ${JSON.stringify({ done: true, fullContent })}\n\n`);
   }
+
+  // Return streaming response
+  return new Response(iteratorToStream(makeIterator()), {
+    headers: {
+      'Content-Type': 'text/event-stream', 
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
 
 // Helper function to convert iterator to stream
