@@ -8,7 +8,7 @@ interface QuestionFieldProps {
   label: string;
   name: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
 
@@ -54,13 +54,13 @@ interface TechConstraints {
 const QuestionField: React.FC<QuestionFieldProps> = ({label, name, value, onChange}) => (
   <label>
     {label}
-    <input
-      type="text"
+    <textarea
+      // type="text"
       name={name}
       value={value}
       onChange={onChange}
       className={styles.input}
-    />
+    ></textarea>
   </label>
 );
 
@@ -77,7 +77,6 @@ export default function ChatPage() {
   // });
   const [response, setResponse] = useState(""); 
   const [loading, setLoading] = useState(false);
-  const [isImproving, setIsImproving] = useState(false); // Add new state
   const [copySuccess, setCopySuccess] = useState(false);
   const accumulatedContent = useRef(""); 
 
@@ -107,8 +106,7 @@ export default function ChatPage() {
     }
   
 
-    if (type == "improve_prompt") setIsImproving(true);
-    else setLoading(true);
+    setLoading(true);
     console.log("submitted");
     setResponse(""); // Reset UI
     accumulatedContent.current = ""; // Reset ref storage
@@ -116,7 +114,7 @@ export default function ChatPage() {
     try {
       const payload = {
         prompt: formData.general_instruction,
-        task: type, // "generate_animation" or "improve_prompt"
+        task: type, // "generate_animation" only 
       };
       console.log("payload: ", payload);
 
@@ -168,7 +166,6 @@ export default function ChatPage() {
                   setResponse(accumulatedContent.current); // Final update
                 else setFormData({ ...formData, general_instruction: accumulatedContent.current });
                 setLoading(false);
-                setIsImproving(false);
                 break;
               }
             }
@@ -208,17 +205,14 @@ export default function ChatPage() {
           value={formData.general_instruction || ""}
           onChange={handleChange}
         />
-        <button type="submit" className={styles.button} disabled={isImproving || loading}>
+        <button type="submit" className={styles.button} disabled={loading}>
           {loading ? "Generating..." : "Generate Animation"}
-        </button>
-        <button onClick={(e) => handleSubmit(e, "improve_prompt")} className={styles.secondaryButton} disabled={isImproving || loading}>
-          {isImproving ? "Improving..." : "Improve Prompt"}
         </button>
         </form>
       </div>
       <div className={styles.rightPanel}>
-      { loading || isImproving ? 
-            <h2>Generating {isImproving ? "Prompt" : "Animation"}...</h2> : 
+      { loading ? 
+            <h2>Generating Animation...</h2> : 
             <>
               <h2>Generated result:</h2> 
               {response && !loading && (
