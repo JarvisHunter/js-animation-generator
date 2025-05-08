@@ -183,63 +183,296 @@ async function handleAnimationGeneration(requestData: any) {
           </script></body></html>`
       },
       { //Basic Motions	Diagonal with Rotation
-        prompt: "Create an animation of a red ball rolling from the top-left corner to the bottom-right corner.",
+        prompt: "Create an animation of a red triangle rolling from the top-left corner to the bottom-right corner.",
         output: `<!DOCTYPE html>
-      <html><body><canvas id="canvas" width="400" height="300"></canvas><script>
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      
-      let x = 20, y = 20, radius = 20;
-      let dx = 1.5, dy = 1.2, angle = 0;
-      
-      function drawBall() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.fillStyle = "red";
-        ctx.fill();
-        ctx.closePath();
-        ctx.restore();
-      
-        x += dx;
-        y += dy;
-        angle += 0.05;
-      
-        if (x < canvas.width - radius && y < canvas.height - radius) {
-          requestAnimationFrame(drawBall);
-        }
-      }
-      drawBall();
-      </script></body></html>`
+        <html>
+        <body>
+          <canvas id="canvas" width="400" height="300"></canvas>
+          <script>
+          const canvas = document.getElementById("canvas");
+          const ctx = canvas.getContext("2d");
+
+          let x = 20, y = 20, size = 20;
+          let dx = 1.5, dy = 1.2;
+          let angle = 0; // Added for rotation
+
+          function drawTriangle() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          ctx.save(); // Save the current transformation matrix
+          ctx.translate(x, y); // Move the origin to the triangle's center
+          ctx.rotate(angle); // Rotate the triangle
+
+          ctx.beginPath();
+          ctx.moveTo(0, -size / 2); // Adjusted coordinates for rotation around the center
+          ctx.lineTo(size / 2, size / 2);
+          ctx.lineTo(-size / 2, size / 2);
+          ctx.fillStyle = "red";
+          ctx.fill();
+          ctx.closePath();
+
+          ctx.restore(); // Restore the transformation matrix
+
+          x += dx;
+          y += dy;
+          angle += 0.05; // Increment the angle for rolling effect
+
+          if (x < canvas.width - size / 2 && y < canvas.height - size / 2) {
+          requestAnimationFrame(drawTriangle);
+          }
+          }
+          drawTriangle();
+          </script>
+        </body>
+        </html>`
       },
       { //Basic Motions	Linear Horizontal Movement
-        "prompt": "Move a green square from left to right in a loop.",
-        "output": "<!DOCTYPE html>\n<html><body><canvas id=\"canvas\" width=\"400\" height=\"100\"></canvas><script>\nconst canvas = document.getElementById(\"canvas\");\nconst ctx = canvas.getContext(\"2d\");\nlet x = 0;\nfunction draw() {\n  ctx.clearRect(0, 0, canvas.width, canvas.height);\n  ctx.fillStyle = \"green\";\n  ctx.fillRect(x, 30, 50, 50);\n  x += 2;\n  if (x > canvas.width) x = -50;\n  requestAnimationFrame(draw);\n}\ndraw();\n</script></body></html>"
+        prompt: "Move a green square from left to right in a loop.",
+        output: `<!DOCTYPE html>
+          <html>
+            <body>
+              <canvas id="canvas" width="400" height="100"></canvas>
+              <script>
+                const canvas = document.getElementById("canvas");
+                const ctx = canvas.getContext("2d");
+                let x = 0;
+                function draw() {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.fillStyle = "green";
+                  ctx.fillRect(x, 30, 50, 50);
+                  x += 2;
+                  if (x > canvas.width) x = -50;
+                  requestAnimationFrame(draw);
+                }
+                draw();
+              </script>
+            </body>
+          </html>`
       },
       { //Basic Motions	Vertical Bouncing
-        "prompt": "Animate a ball bouncing vertically inside a canvas.",
-        "output": "<!DOCTYPE html>\n<html><body><canvas id=\"canvas\" width=\"200\" height=\"300\"></canvas><script>\nconst canvas = document.getElementById(\"canvas\");\nconst ctx = canvas.getContext(\"2d\");\nlet y = 0, dy = 2, radius = 20;\nfunction draw() {\n  ctx.clearRect(0, 0, canvas.width, canvas.height);\n  ctx.beginPath();\n  ctx.arc(100, y, radius, 0, Math.PI * 2);\n  ctx.fillStyle = \"blue\";\n  ctx.fill();\n  ctx.closePath();\n  y += dy;\n  if (y + radius > canvas.height || y - radius < 0) dy = -dy;\n  requestAnimationFrame(draw);\n}\ndraw();\n</script></body></html>"
+        prompt: "Animate a ball bouncing vertically inside a canvas.",
+        output: `<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Bouncing Ball Animation</title>
+            <style>
+                canvas {
+                    border: 2px solid #333;
+                    background-color: #f0f0f0;
+                }
+                body {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background-color: #fff;
+                }
+            </style>
+        </head>
+        <body><canvas id="bounceCanvas" width="600" height="400"></canvas>
+            <script>
+                const canvas = document.getElementById('bounceCanvas');
+                const ctx = canvas.getContext('2d');
+                const ball = {
+                    x: canvas.width / 2,
+                    y: 30,
+                    radius: 30,
+                    dy: 0,          // Vertical velocity
+                    gravity: 0.5,
+                    damping: 0.8     // Energy loss on bounce
+                };
+                function drawBall() {
+                    ctx.beginPath();
+                    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fill();
+                    ctx.closePath();
+                }
+                function updatePhysics() {
+                    // Apply gravity
+                    ball.dy += ball.gravity;
+                    ball.y += ball.dy;
+                    // Bottom boundary collision
+                    if (ball.y + ball.radius > canvas.height) {
+                        ball.y = canvas.height - ball.radius;
+                        ball.dy *= -ball.damping;
+                        // Stop animation when bouncing becomes barely noticeable
+                        if (Math.abs(ball.dy) < 0.5) ball.dy = 0;
+                    }
+                    // Top boundary collision (optional)
+                    if (ball.y - ball.radius < 0) {
+                        ball.y = ball.radius;
+                        ball.dy *= -ball.damping;
+                    }
+                }
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawBall();
+                    updatePhysics();
+                    if (ball.dy !== 0) {
+                        requestAnimationFrame(animate);
+                    }
+                }
+                animate();
+            </script></body></html>`
       },
       { //Color	Hue Rotation / Continuous Color Transition
-        "prompt": "Cycle background color through a rainbow spectrum over 10 seconds.",
-        "output": "<!DOCTYPE html>\n<html><body><script>\nlet hue = 0;\nfunction changeBackground() {\n  document.body.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;\n  hue = (hue + 1) % 360;\n  requestAnimationFrame(changeBackground);\n}\nchangeBackground();\n</script></body></html>"
+        prompt: "Cycle background color through a rainbow spectrum over 10 seconds.",
+        output: `<!DOCTYPE html>
+        <html><body>
+        <script>
+        let hue = 0;
+        function changeBackground() {
+            document.body.style.backgroundColor = 'hsl(' + hue + ', 100%, 50%)';
+            hue = (hue + 1) % 360;
+            requestAnimationFrame(changeBackground);
+          }
+          changeBackground();
+          </script></body></html>`
       },
       { //Transformations	Rotation
-        "prompt": "Rotate a star shape continuously around its center.",
-        "output": "<!DOCTYPE html>\n<html><body><canvas id=\"canvas\" width=\"300\" height=\"300\"></canvas><script>\nconst canvas = document.getElementById(\"canvas\");\nconst ctx = canvas.getContext(\"2d\");\nlet angle = 0;\nfunction drawStar(cx, cy, spikes, outerRadius, innerRadius) {\n  let rot = Math.PI / 2 * 3;\n  let x = cx;\n  let y = cy;\n  let step = Math.PI / spikes;\n  ctx.beginPath();\n  ctx.moveTo(cx, cy - outerRadius);\n  for (let i = 0; i < spikes; i++) {\n    x = cx + Math.cos(rot) * outerRadius;\n    y = cy + Math.sin(rot) * outerRadius;\n    ctx.lineTo(x, y);\n    rot += step;\n    x = cx + Math.cos(rot) * innerRadius;\n    y = cy + Math.sin(rot) * innerRadius;\n    ctx.lineTo(x, y);\n    rot += step;\n  }\n  ctx.lineTo(cx, cy - outerRadius);\n  ctx.closePath();\n  ctx.fillStyle = \"gold\";\n  ctx.fill();\n}\nfunction draw() {\n  ctx.clearRect(0, 0, canvas.width, canvas.height);\n  ctx.save();\n  ctx.translate(150, 150);\n  ctx.rotate(angle);\n  drawStar(0, 0, 5, 60, 30);\n  ctx.restore();\n  angle += 0.01;\n  requestAnimationFrame(draw);\n}\ndraw();\n</script></body></html>"
+        prompt: "Rotate a star shape continuously around its center.",
+        output: `<!DOCTYPE html>
+        <html>
+        <body><canvas id="canvas" width="300" height="300"></canvas>
+        <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        let angle = 0;
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+          let rot = Math.PI / 2 * 3;
+          let x = cx;
+          let y = cy;
+          let step = Math.PI / spikes;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - outerRadius);
+          for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+            }
+          ctx.lineTo(cx, cy - outerRadius);
+          ctx.closePath();
+          ctx.fillStyle = "gold";
+          ctx.fill();
+        }
+        function draw() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.save();
+          ctx.translate(150, 150);
+          ctx.rotate(angle);
+          drawStar(0, 0, 5, 60, 30);
+          ctx.restore();
+          angle += 0.01;
+          requestAnimationFrame(draw);
+        }
+        draw();
+        </script></body></html>`
       },
       {// Interactive Animations	Cursor-Driven Movement with Scaling
-        "prompt": "Generate a JavaScript animation of a square following the cursor with a slight lag during drag. While moving, the square should scale down by 10%, and once the user releases the mouse, it should stay at the final position.",
-        "output": "<!DOCTYPE html>\n<html><body><canvas id=\"canvas\" width=\"600\" height=\"400\"></canvas><script>\nconst canvas = document.getElementById(\"canvas\");\nconst ctx = canvas.getContext(\"2d\");\n\nlet square = { x: 100, y: 100, size: 100, targetX: 100, targetY: 100 };\nlet isDragging = false;\n\ncanvas.addEventListener(\"mousedown\", (e) => {\n  isDragging = true;\n  updateTarget(e);\n});\ncanvas.addEventListener(\"mousemove\", (e) => {\n  if (isDragging) updateTarget(e);\n});\ncanvas.addEventListener(\"mouseup\", () => isDragging = false);\n\nfunction updateTarget(e) {\n  const rect = canvas.getBoundingClientRect();\n  square.targetX = e.clientX - rect.left - square.size / 2;\n  square.targetY = e.clientY - rect.top - square.size / 2;\n}\n\nfunction draw() {\n  ctx.clearRect(0, 0, canvas.width, canvas.height);\n  square.x += (square.targetX - square.x) * 0.1;\n  square.y += (square.targetY - square.y) * 0.1;\n\n  const scale = isDragging ? 0.9 : 1.0;\n  ctx.save();\n  ctx.translate(square.x + square.size / 2, square.y + square.size / 2);\n  ctx.scale(scale, scale);\n  ctx.fillStyle = \"blue\";\n  ctx.fillRect(-square.size / 2, -square.size / 2, square.size, square.size);\n  ctx.restore();\n\n  requestAnimationFrame(draw);\n}\ndraw();\n</script></body></html>"
+        prompt: "Generate a JavaScript animation of a square following the cursor with a slight lag during drag. While moving, the square should scale down by 10%, and once the user releases the mouse, it should stay at the final position.",
+        output: `<!DOCTYPE html>
+        <html><body><canvas id="canvas" width="600" height="400"></canvas>
+        <script>
+          const canvas = document.getElementById("canvas");
+          const ctx = canvas.getContext("2d");
+
+          let square = { x: 100, y: 100, size: 100, targetX: 100, targetY: 100 };
+          let isDragging = false;
+
+          canvas.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            updateTarget(e);
+          });
+          canvas.addEventListener("mousemove", (e) => {
+            if (isDragging) updateTarget(e);
+          });
+          canvas.addEventListener("mouseup", () => (isDragging = false));
+
+          function updateTarget(e) {
+            const rect = canvas.getBoundingClientRect();
+            square.targetX = e.clientX - rect.left - square.size / 2;
+            square.targetY = e.clientY - rect.top - square.size / 2;
+          }
+
+          function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            square.x += (square.targetX - square.x) * 0.1;
+            square.y += (square.targetY - square.y) * 0.1;
+
+            const scale = isDragging ? 0.9 : 1.0;
+            ctx.save();
+            ctx.translate(square.x + square.size / 2, square.y + square.size / 2);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = "blue";
+            ctx.fillRect(-square.size / 2, -square.size / 2, square.size, square.size);
+            ctx.restore();
+
+            requestAnimationFrame(draw);
+          }
+          draw();
+        </script></body></html>`
       },
       { //Sequencing & Chaining	Color Transition → Rotation
+        prompt: "Generate a JavaScript animation where a rectangle changes color from red to green and then rotates 360 degrees.",
+        output: `<!DOCTYPE html>
+        <html>
+          <body>
+            <canvas id="canvas" width="400" height="300"></canvas>
+            <script>
+              const canvas = document.getElementById("canvas");
+              const ctx = canvas.getContext("2d");
 
-        "prompt": "Generate a JavaScript animation where a rectangle changes color from red to green and then rotates 360 degrees.",
-        "output": "<!DOCTYPE html>\n<html><body><canvas id=\"canvas\" width=\"400\" height=\"300\"></canvas><script>\nconst canvas = document.getElementById(\"canvas\");\nconst ctx = canvas.getContext(\"2d\");\n\nlet angle = 0;\nlet progress = 0;\nlet phase = \"color\";\n\nfunction interpolateColor(p) {\n  const r = Math.floor(255 * (1 - p));\n  const g = Math.floor(255 * p);\n  return `rgb(${r},${g},0)`;\n}\n\nfunction draw() {\n  ctx.clearRect(0, 0, canvas.width, canvas.height);\n  ctx.save();\n  ctx.translate(200, 150);\n\n  if (phase === \"color\") {\n    ctx.fillStyle = interpolateColor(progress);\n    ctx.fillRect(-50, -25, 100, 50);\n    progress += 0.01;\n    if (progress >= 1) {\n      progress = 0;\n      phase = \"rotate\";\n    }\n  } else if (phase === \"rotate\") {\n    ctx.rotate(angle);\n    ctx.fillStyle = \"green\";\n    ctx.fillRect(-50, -25, 100, 50);\n    angle += 0.05;\n    if (angle >= 2 * Math.PI) {\n      angle = 2 * Math.PI;\n    }\n  }\n\n  ctx.restore();\n  if (angle < 2 * Math.PI) requestAnimationFrame(draw);\n}\ndraw();\n</script></body></html>"
-      }
+              let angle = 0;
+              let progress = 0;
+              let phase = "color"; // Can be "color" or "rotate"
+
+              function interpolateColor(p) {
+                const r = Math.floor(255 * (1 - p)); // Red decreases as p increases
+                const g = Math.floor(255 * p);      // Green increases as p increases
+                return 'rgb(' + [r, g, 0].join(',') + ')';          // Blue is always 0
+              }
+
+              function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save(); // Save the current canvas state
+                ctx.translate(200, 150); // Move the origin to the center of the canvas (400/2, 300/2)
+
+                if (phase === "color") {
+                  ctx.fillStyle = interpolateColor(progress);
+                  ctx.fillRect(-50, -25, 100, 50); // Draw a rectangle centered at the new origin
+                  progress += 0.01;
+                  if (progress >= 1) {
+                    progress = 0; // Reset progress
+                    phase = "rotate"; // Switch to the rotation phase
+                  }
+                } else if (phase === "rotate") {
+                  ctx.rotate(angle); // Rotate the canvas context
+                  ctx.fillStyle = "green"; // Set fill to green for rotation phase
+                  ctx.fillRect(-50, -25, 100, 50); // Draw the rotated rectangle
+                  angle += 0.05; // Increment rotation angle
+                  if (angle >= 2 * Math.PI) { // If a full circle (360 degrees) is completed
+                    angle = 2 * Math.PI; // Stop further rotation by capping the angle
+                    // The animation will stop here because of the condition in requestAnimationFrame
+                  }
+                }
+
+                ctx.restore(); // Restore the canvas state to before translate/rotate
+
+                // Continue animation only if the rotation phase is not fully complete
+                if (angle < 2 * Math.PI) {
+                  requestAnimationFrame(draw);
+                }
+              }
+    draw(); 
+    </script></body></html>`
+    }
     ];
     
     const messages = [
