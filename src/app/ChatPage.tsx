@@ -211,9 +211,9 @@ export default function ChatPage() {
         <button type="submit" className={styles.button} disabled={isImproving || loading}>
           {loading ? "Generating..." : "Generate Animation"}
         </button>
-        <button onClick={(e) => handleSubmit(e, "improve_prompt")} className={styles.secondaryButton} disabled={isImproving || loading}>
+        {/* <button onClick={(e) => handleSubmit(e, "improve_prompt")} className={styles.secondaryButton} disabled={isImproving || loading}>
           {isImproving ? "Improving..." : "Improve Prompt"}
-        </button>
+        </button> */}
         </form>
       </div>
       <div className={styles.rightPanel}>
